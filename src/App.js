@@ -1,26 +1,56 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useRef, useCallback } from 'react';
+import uuid4 from 'uuid/v4';
+import useBookSearch from './useBookSearch'
 
 function App() {
+  const [query, setQuery] = useState('')
+  const [pageNumber, setPageNumber] = useState(1)
+
+
+  const {
+    loading,
+    error,
+    books,
+    hasMore } = useBookSearch(query, pageNumber);
+
+
+  function handleSearch(e) {
+    setQuery(e.target.value);
+    setPageNumber(1)
+  }
+
+  const observer = useRef()
+
+  const lastBookElement = useCallback(node => {
+    if(loading) return
+    //will disconnect from previous element and connect to the new element correctly
+    if(observer.current) observer.current.disconnect() 
+    observer.current = new IntersectionObserver(entries => {
+      if(entries[0].isIntersecting && hasMore) {
+        setPageNumber(prevPageNumber => prevPageNumber + 1)
+      }
+    })
+    if(node) observer.current.observe(node)
+  }, [loading, hasMore])
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <input value={query} onChange={(e) => handleSearch(e)}></input>
+
+      {books.map((title, index) => {
+        if (index + 1 === books.length) {
+          return (<div ref={lastBookElement} key={uuid4()}>{title}</div>)
+        } else {
+          return (<div key={uuid4()}>{title}</div>)
+        }
+      })}
+
+      {loading && <div>Loading...</div>}
+      {error && <div>Error!!</div>}
+    </>
   );
 }
+
+
 
 export default App;
